@@ -20,7 +20,7 @@ jobs:
           python-version: 3.x  # Replace 'x' with the desired Python version
 
       - name: Install dependencies
-        run: pip install pyinstaller
+        run: pip install pyinstaller colorama
 
       - name: Build executable
         run: pyinstaller --onefile wowparser.py
