@@ -26,7 +26,7 @@ jobs:
         run: pyinstaller --onefile wowparser.py
 
       - name: Zip executable
-        run: zip -r wowparser.zip dist/wowparser.exe
+        run: 7z a wowparser.zip dist\wowparser.exe
 
       - name: Create release
         id: create_release
@@ -46,4 +46,3 @@ jobs:
         with:
           name: MyExecutable
           path: wowparser.zip
-
