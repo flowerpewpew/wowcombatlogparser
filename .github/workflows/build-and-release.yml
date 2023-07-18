@@ -28,18 +28,7 @@ jobs:
       - name: Zip executable
         run: 7z a wowparser.zip dist\wowparser.exe
 
-      - name: Create release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ github.run_number }}
-          release_name: Release v${{ github.run_number }}
-          body: |
-            Automatic release for commit ${{ github.sha }}.
-          draft: false
-          prerelease: false
+      
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
@@ -48,3 +37,4 @@ jobs:
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
+          body: "Executable build for the parser. Make sure it's released by github-actions before downloading."
