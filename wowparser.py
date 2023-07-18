@@ -156,7 +156,14 @@ class CombatLogAnalyzer:
 
     def print_player_stats(self, verbose=None):
         sorted_data = sorted(self.player_data.items(), key=lambda x: x[1]["damage"], reverse=True)
-        max_value = sorted_data[0][1]["damage"]
+        max_value=0
+        if sorted_data and len(sorted_data) > 0 and len(sorted_data[0]) > 1:
+            max_value = sorted_data[0][1].get("damage", 0)
+        else:
+            print("Warning, the log file does not have proper data or logging hasn't started yet. \
+                It's recommended to clean the log directory and wait before running the parser")
+            time.sleep(10)
+            return 
         time_diff = (self.end_timestamp - self.start_timestamp).total_seconds()
         max_name_length = max(len(data["name"]) for _, data in sorted_data)
 
