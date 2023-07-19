@@ -26,16 +26,10 @@ jobs:
         run: pyinstaller --onefile wowparser.py
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        uses: technote-space/release-github-actions@v6.2.2
         with:
-          tag_name: v6
-          release_name: Release ${{ github.ref }}
-          body: Onefile executable for the script built using pyinstaller
-          draft: false
-          prerelease: false
+          # Secret GitHub API token to use for making API requests.
+          GITHUB_TOKEN: ${{ github.token }}
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
