@@ -104,18 +104,26 @@ class CombatLogAnalyzer:
         player_id = columns[1].strip('"')
         if "Player" not in columns[1]:
             return
-        damage_value = float(columns[25])
-        if float(columns[25]) > 0:
-            damage_value - float(columns[27])
+        damage_value = float(columns[27])
+
         if player_id in self.player_data:
             self.player_data[player_id]["damage"] += damage_value
+
+        owner_player_id = None
+        for player, data in self.player_data.items():
+            if "pets" in data and player_id in data["pets"]:
+                owner_player_id = player
+                break
+
+        # Print the corresponding player ID if found
+        if owner_player_id:
+            self.player_data[owner_player_id]["damage"] += damage_value
 
     def process_line_spells(self, line):
         columns = line.split(",")
         timestamp = columns[0].strip("  SPELL_DAMAGE")
         player_id = columns[1].strip('"')
-        if "Player" not in columns[1]:
-            return
+
         damage_value = float(columns[29])
         if float(columns[31]) > 0:
             damage_value - float(columns[31])
@@ -133,12 +141,39 @@ class CombatLogAnalyzer:
                     self.player_data[player_id]["spells"][spell_name] = damage_value
             else:
                 self.player_data[player_id]["spells"] = spell_dict
+        if "Pet" in player_id or "Creature" in player_id:
+            owner_player_id = None
+            for player, data in self.player_data.items():
+                if "pets" in data and player_id in data["pets"]:
+                    owner_player_id = player
+                    break
+
+            if owner_player_id:
+                self.player_data[owner_player_id]["damage"] += damage_value
+                if "spells" in self.player_data[owner_player_id]:
+                    if spell_name in self.player_data[owner_player_id]["spells"]:
+                        self.player_data[owner_player_id]["spells"][
+                            spell_name
+                        ] += damage_value
+                    else:
+                        self.player_data[owner_player_id]["spells"][
+                            spell_name
+                        ] = damage_value
+                else:
+                    self.player_data[owner_player_id]["spells"] = spell_dict
 
     def process_log_entry(self, line):
-
         if "ZONE_CHANGE" in line:
             player_data = {}
-
+            return
+        if "SPELL_SUMMON" in line:
+            columns = line.split(",")
+            player_id = columns[1].strip('"')
+            pet_id = columns[5].strip('"')
+            if player_id in self.player_data:
+                self.player_data[player_id].setdefault("pets", {})
+                self.player_data[player_id]["pets"][pet_id] = pet_id
+            return
         if "COMBATANT_INFO" in line:
             columns = line.split(",")
             spec_id = columns[24]
@@ -153,9 +188,12 @@ class CombatLogAnalyzer:
 
         if "SPELL_DAMAGE_SUPPORT" in line or "SPELL_PERIODIC_DAMAGE_SUPPORT" in line:
             self.process_line_support(line)
-        elif "SPELL_DAMAGE" in line:
+        elif "SPELL_DAMAGE" in line or "DAMAGE_SPLIT" in line:
             self.process_line_spells(line)
             columns = line.split(",")
+            if "Player" not in columns[1]:
+                return
+
             timestamp = columns[0].strip("  SPELL_DAMAGE")
             if self.start_timestamp is None:
                 self.start_timestamp = datetime.strptime(timestamp, "%m/%d %H:%M:%S.%f")
@@ -245,6 +283,7 @@ class CombatLogAnalyzer:
             self.process_log_file(self.newest_file)
             self.print_player_stats()
             # How often do we read from the log file and refresh our parse
+
             time.sleep(3)
 
 
