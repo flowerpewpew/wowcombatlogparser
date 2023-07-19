@@ -28,7 +28,16 @@ jobs:
       - name: Zip executable
         run: 7z a wowparser.zip dist\wowparser.exe
 
-      
+      - name: release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: false
+          release_name: Main
+          tag_name: ${{ github.ref }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
