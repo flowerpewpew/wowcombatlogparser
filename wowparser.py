@@ -172,8 +172,7 @@ class CombatLogAnalyzer:
             or "RANGE_DAMAGE_LANDED_SUPPORT" in line
         ):
             self.process_line_support(line)
-
-        if "SWING_DAMAGE" in line or "RANGE_DAMAGE" in line:
+        elif "SWING_DAMAGE" in line or "RANGE_DAMAGE" in line:
             self.process_line_swing(line)
 
         if "SPELL_PERIODIC_DAMAGE" in line:
