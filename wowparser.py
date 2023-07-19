@@ -91,6 +91,7 @@ class CombatLogAnalyzer:
         current_player_id = columns[39].strip('"\r\n')
         player_id = columns[1].strip('"')
         damage_value = float(columns[29])
+
         if current_player_id in self.player_data:
             self.player_data[current_player_id]["damage"] += damage_value
 
@@ -206,10 +207,7 @@ class CombatLogAnalyzer:
             ):
                 player_name = columns[2].strip('"')
                 self.player_data[player_id].update({"name": player_name})
-        if (
-            "SWING_DAMAGE_LANDED_SUPPORT" in line
-            or "RANGE_DAMAGE_LANDED_SUPPORT" in line
-        ):
+        if "SWING_DAMAGE_LANDED_SUPPORT" in line or "RANGE_DAMAGE_SUPPORT" in line:
             self.process_line_support(line)
         elif "SWING_DAMAGE" in line or "RANGE_DAMAGE" in line:
             self.process_line_swing(line)
