@@ -126,7 +126,7 @@ class CombatLogAnalyzer:
 
         damage_value = float(columns[29])
         if float(columns[31]) > 0:
-            damage_value - float(columns[31])
+            damage_value -= float(columns[31])
 
         spell_name = columns[10].strip('"')
         spell_dict = {}
