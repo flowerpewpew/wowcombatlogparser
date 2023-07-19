@@ -24,26 +24,27 @@ jobs:
 
       - name: Build executable
         run: pyinstaller --onefile wowparser.py
-
-      - name: Zip executable
-        run: 7z a wowparser.zip dist\wowparser.exe
-
-      - name: release
-        uses: actions/create-release@v1
+        
+      - name: create release
         id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tag_name: ${{ github.event.head_commit.message }}
+          release_name: ${{ github.event.head_commit.message }}
+          overwrite: true
+          body: |
+            Release v1.0.0
           draft: false
           prerelease: false
-          release_name: Main
-          tag_name: ${{ github.ref }}
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-      - name: Upload binaries to release
-        uses: svenstaro/upload-release-action@v2
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: wowparser.zip
-          tag: ${{ github.ref }}
-          overwrite: true
-          file_glob: true
-          body: "Executable build for the parser. Make sure it's released by github-actions before downloading."
+          upload_url: ${{steps.create_release.outputs.upload_url}}
+          asset_path: dist/wowparser.exe
+          asset_name: wowparser.exe
+          asset_content_type: application/zip
