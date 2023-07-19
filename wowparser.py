@@ -189,7 +189,7 @@ class CombatLogAnalyzer:
 
         if "SPELL_DAMAGE_SUPPORT" in line or "SPELL_PERIODIC_DAMAGE_SUPPORT" in line:
             self.process_line_support(line)
-        elif "SPELL_DAMAGE" in line or "DAMAGE_SPLIT" in line:
+        elif "SPELL_DAMAGE" in line:
             self.process_line_spells(line)
             columns = line.split(",")
             if "Player" not in columns[1]:
