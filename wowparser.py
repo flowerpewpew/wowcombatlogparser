@@ -165,6 +165,7 @@ class CombatLogAnalyzer:
     def process_log_entry(self, line):
         if "ZONE_CHANGE" in line:
             self.player_data = {}
+            self.start_timestamp = None
             return
         if "SPELL_SUMMON" in line:
             columns = line.split(",")
