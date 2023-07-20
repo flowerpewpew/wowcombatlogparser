@@ -55,6 +55,7 @@ class CombatLogAnalyzer:
         self.player_data = {}
         self.start_timestamp = None
         self.end_timestamp = None
+        self.show_loading = True
 
     def get_file_size(self, file_path):
         try:
@@ -81,8 +82,21 @@ class CombatLogAnalyzer:
 
     def process_log_file(self, filename):
         with codecs.open(filename, "r", encoding="utf-8") as file:
+            processed = 0
+            total_lines = len(file.readlines())
+            file.seek(0)
             for line in file:
+                processed += 1
                 self.process_log_entry(line)
+                if processed % (total_lines // 25) == 0 and self.show_loading == True:
+                    progress = processed / total_lines * 100
+                    file_size_mb = self.line_count / 1048576
+                    processed_mb = file_size_mb * progress / 100
+                    self.clear_screen()
+                    print("Opening file...")
+                    print(
+                        f"Progress: {int(progress)}% | {int(processed_mb)}/{int(file_size_mb)}MB"
+                    )
 
     def process_line_support(self, line):
         columns = line.split(",")
@@ -297,7 +311,7 @@ class CombatLogAnalyzer:
             self.process_log_file(self.newest_file)
             self.print_player_stats()
             # How often do we read from the log file and refresh our parse
-
+            self.show_loading = False
             time.sleep(3)
 
 
