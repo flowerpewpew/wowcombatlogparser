@@ -28,12 +28,12 @@ class CombatLogAnalyzer:
             "62": Back.LIGHTBLUE_EX,  # Arcane (Mage)',
             "63": Back.LIGHTBLUE_EX,  # Fire (Mage)',
             "64": Back.LIGHTBLUE_EX,  # Frost (Mage)',
-            "268": Back.GREEN,  # Brewmaster (Monk)',
-            "270": Back.GREEN,  # Mistweaver (Monk)',
-            "269": Back.GREEN,  # Windwalker (Monk)',
-            "65": Back.MAGENTA,  # Holy (Paladin)',
-            "66": Back.MAGENTA,  # Protection (Paladin)',
-            "70": Back.MAGENTA,  # Retribution (Paladin)',
+            "268": Back.LIGHTGREEN_EX,  # Brewmaster (Monk)',
+            "270": Back.LIGHTGREEN_EX,  # Mistweaver (Monk)',
+            "269": Back.LIGHTGREEN_EX,  # Windwalker (Monk)',
+            "65": Back.LIGHTMAGENTA_EX,  # Holy (Paladin)',
+            "66": Back.LIGHTMAGENTA_EX,  # Protection (Paladin)',
+            "70": Back.LIGHTMAGENTA_EX,  # Retribution (Paladin)',
             "256": Back.WHITE,  # Discipline (Priest)',
             "257": Back.WHITE,  # Holy (Priest)',
             "258": Back.WHITE,  # Shadow (Priest)',
@@ -46,9 +46,9 @@ class CombatLogAnalyzer:
             "265": Back.LIGHTMAGENTA_EX,  # Affliction (Warlock)',
             "266": Back.LIGHTMAGENTA_EX,  # Demonology (Warlock)',
             "267": Back.LIGHTMAGENTA_EX,  # Destruction (Warlock)',
-            "71": Back.LIGHTWHITE_EX,  # Arms (Warrior)',
-            "72": Back.LIGHTWHITE_EX,  # Fury (Warrior)',
-            "73": Back.LIGHTWHITE_EX,  # Protection (Warrior)'
+            "71": Back.LIGHTBLACK_EX,  # Arms (Warrior)',
+            "72": Back.LIGHTBLACK_EX,  # Fury (Warrior)',
+            "73": Back.LIGHTBLACK_EX,  # Protection (Warrior)'
         }
         self.newest_file = None
         self.line_count = 0
@@ -91,6 +91,8 @@ class CombatLogAnalyzer:
         current_player_id = columns[39].strip('"\r\n')
         player_id = columns[1].strip('"')
         damage_value = float(columns[29])
+        if float(columns[31]) > 0:
+            damage_value -= float(columns[31])
 
         if current_player_id in self.player_data:
             self.player_data[current_player_id]["damage"] += damage_value
@@ -102,17 +104,27 @@ class CombatLogAnalyzer:
 
     def process_line_swing(self, line):
         columns = line.split(",")
-        player_id = columns[1].strip('"')
-        if "Player" not in columns[1]:
+        entity_id = columns[1].strip('"')
+        if "Creature" in entity_id:
             return
-        damage_value = float(columns[27])
+        damage_value = float(columns[26])
+        if float(columns[28]) > 0:
+            damage_value -= float(columns[28])
+        if entity_id in self.player_data:
+            self.player_data[entity_id]["damage"] += damage_value
 
-        if player_id in self.player_data:
-            self.player_data[player_id]["damage"] += damage_value
+        if "Pet" in entity_id:
+            owner_id = columns[10]
+            if owner_id in self.player_data:
+                if "pets" not in self.player_data[owner_id]:
+                    pets_key = "pets"
+                    pets_list = []
+                    self.player_data[owner_id][pets_key] = pets_list
+                self.player_data[owner_id]["pets"].append(entity_id)
 
         owner_player_id = None
         for player, data in self.player_data.items():
-            if "pets" in data and player_id in data["pets"]:
+            if "pets" in data and entity_id in data["pets"]:
                 owner_player_id = player
                 break
 
@@ -123,7 +135,7 @@ class CombatLogAnalyzer:
     def process_line_spells(self, line):
         columns = line.split(",")
         timestamp = columns[0].strip("  SPELL_DAMAGE")
-        player_id = columns[1].strip('"')
+        entity_id = columns[1].strip('"')
 
         damage_value = float(columns[29])
         if float(columns[31]) > 0:
@@ -133,19 +145,19 @@ class CombatLogAnalyzer:
         spell_dict = {}
         spell_dict[spell_name] = damage_value
 
-        if player_id in self.player_data:
-            self.player_data[player_id]["damage"] += damage_value
-            if "spells" in self.player_data[player_id]:
-                if spell_name in self.player_data[player_id]["spells"]:
-                    self.player_data[player_id]["spells"][spell_name] += damage_value
+        if entity_id in self.player_data:
+            self.player_data[entity_id]["damage"] += damage_value
+            if "spells" in self.player_data[entity_id]:
+                if spell_name in self.player_data[entity_id]["spells"]:
+                    self.player_data[entity_id]["spells"][spell_name] += damage_value
                 else:
-                    self.player_data[player_id]["spells"][spell_name] = damage_value
+                    self.player_data[entity_id]["spells"][spell_name] = damage_value
             else:
-                self.player_data[player_id]["spells"] = spell_dict
-        if "Pet" in player_id or "Creature" in player_id:
+                self.player_data[entity_id]["spells"] = spell_dict
+        if "Pet" in entity_id or "Creature" in entity_id:
             owner_player_id = None
             for player, data in self.player_data.items():
-                if "pets" in data and player_id in data["pets"]:
+                if "pets" in data and entity_id in data["pets"]:
                     owner_player_id = player
                     break
 
@@ -173,8 +185,11 @@ class CombatLogAnalyzer:
             player_id = columns[1].strip('"')
             pet_id = columns[5].strip('"')
             if player_id in self.player_data:
-                self.player_data[player_id].setdefault("pets", {})
-                self.player_data[player_id]["pets"][pet_id] = pet_id
+                if "pets" not in self.player_data[player_id]:
+                    pets_key = "pets"
+                    pets_list = []
+                    self.player_data[player_id][pets_key] = pets_list
+                self.player_data[player_id]["pets"].append(pet_id)
             return
         if "COMBATANT_INFO" in line:
             columns = line.split(",")
