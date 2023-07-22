@@ -3,12 +3,43 @@ import time
 import codecs
 from datetime import datetime
 from colorama import init, Fore, Back
+import re
 
 init()
+
+execution_time = 0
+
+
+def timeit(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        execution_time = int((end_time - start_time) * 1000)
+        print(f"Processing {func.__name__} took {execution_time} milliseconds")
+        time.sleep(1)
+        return result
+
+    return wrapper
 
 
 class CombatLogAnalyzer:
     def __init__(self):
+        self.entry_patterns = {
+            "ZONE_CHANGE": re.compile(r"ZONE_CHANGE"),
+            "SPELL_SUMMON": re.compile(r"SPELL_SUMMON"),
+            "COMBATANT_INFO": re.compile(r"COMBATANT_INFO"),
+            "SPELL_DAMAGE_SUPPORT": re.compile(r"SPELL_DAMAGE_SUPPORT"),
+            "SPELL_PERIODIC_DAMAGE_SUPPORT": re.compile(
+                r"SPELL_PERIODIC_DAMAGE_SUPPORT"
+            ),
+            "SPELL_DAMAGE": re.compile(r"SPELL_DAMAGE"),
+            "SWING_DAMAGE_LANDED_SUPPORT": re.compile(r"SWING_DAMAGE_LANDED_SUPPORT"),
+            "RANGE_DAMAGE_SUPPORT": re.compile(r"RANGE_DAMAGE_SUPPORT"),
+            "SWING_DAMAGE": re.compile(r"SWING_DAMAGE"),
+            "RANGE_DAMAGE": re.compile(r"RANGE_DAMAGE"),
+            "SPELL_PERIODIC_DAMAGE": re.compile(r"SPELL_PERIODIC_DAMAGE"),
+        }
         self.color_map = {
             "250": Back.RED,  # Blood (Death Knight)',
             "251": Back.RED,  # Frost (Death Knight)',
@@ -80,6 +111,80 @@ class CombatLogAnalyzer:
     def clear_screen(self):
         os.system("cls" if os.name == "nt" else "clear")
 
+    def process_zone_change(self, line):
+        self.player_data = {}
+        self.start_timestamp = None
+        return
+
+    def process_spell_summon(self, line):
+        columns = line.split(",")
+        player_id = columns[1].strip('"')
+        pet_id = columns[5].strip('"')
+        if player_id in self.player_data:
+            if "pets" not in self.player_data[player_id]:
+                pets_key = "pets"
+                pets_list = []
+                self.player_data[player_id][pets_key] = pets_list
+            self.player_data[player_id]["pets"].append(pet_id)
+        return
+
+    def process_combatant_info(self, line):
+        columns = line.split(",")
+        spec_id = columns[24]
+        player_id = columns[1].strip('"')
+        if player_id not in self.player_data:
+            self.player_data[player_id] = {
+                "spec_id": spec_id,
+                "damage": 0,
+                "name": "",
+                "spells": {},
+            }
+        return
+
+    def process_spell_damage_support(self, line):
+        self.process_line_support(line)
+        return
+
+    def process_spell_periodic_damage_support(self, line):
+        self.process_line_support(line)
+        return 0
+
+    def process_spell_damage(self, line):
+        self.process_line_spells(line)
+        columns = line.split(",")
+        if "Player" not in columns[1]:
+            return
+
+        timestamp = columns[0].strip("  SPELL_DAMAGE")
+        if self.start_timestamp is None:
+            self.start_timestamp = datetime.strptime(timestamp, "%m/%d %H:%M:%S.%f")
+        self.end_timestamp = datetime.strptime(timestamp, "%m/%d %H:%M:%S.%f")
+        player_id = columns[1].strip('"')
+        if player_id in self.player_data and self.player_data[player_id]["name"] == "":
+            player_name = columns[2].strip('"')
+            self.player_data[player_id].update({"name": player_name})
+
+    def process_swing_damage_landed_support(self, line):
+        self.process_line_support(line)
+        return 0
+
+    def process_range_damage_support(self, line):
+        self.process_line_support(line)
+        return 0
+
+    def process_swing_damage(self, line):
+        self.process_line_swing(line)
+        return 0
+
+    def process_range_damage(self, line):
+        self.process_line_swing(line)
+        return 0
+
+    def process_spell_periodic_damage(self, line):
+        self.process_line_spells(line)
+        return 0
+
+    # @timeit
     def process_log_file(self, filename):
         with codecs.open(filename, "r", encoding="utf-8") as file:
             processed = 0
@@ -141,8 +246,6 @@ class CombatLogAnalyzer:
             if "pets" in data and entity_id in data["pets"]:
                 owner_player_id = player
                 break
-
-        # Print the corresponding player ID if found
         if owner_player_id:
             self.player_data[owner_player_id]["damage"] += damage_value
 
@@ -190,59 +293,12 @@ class CombatLogAnalyzer:
                     self.player_data[owner_player_id]["spells"] = spell_dict
 
     def process_log_entry(self, line):
-        if "ZONE_CHANGE" in line:
-            self.player_data = {}
-            self.start_timestamp = None
-            return
-        if "SPELL_SUMMON" in line:
-            columns = line.split(",")
-            player_id = columns[1].strip('"')
-            pet_id = columns[5].strip('"')
-            if player_id in self.player_data:
-                if "pets" not in self.player_data[player_id]:
-                    pets_key = "pets"
-                    pets_list = []
-                    self.player_data[player_id][pets_key] = pets_list
-                self.player_data[player_id]["pets"].append(pet_id)
-            return
-        if "COMBATANT_INFO" in line:
-            columns = line.split(",")
-            spec_id = columns[24]
-            player_id = columns[1].strip('"')
-            if player_id not in self.player_data:
-                self.player_data[player_id] = {
-                    "spec_id": spec_id,
-                    "damage": 0,
-                    "name": "",
-                    "spells": {},
-                }
+        for key, pattern in self.entry_patterns.items():
+            if pattern.search(line):
+                getattr(self, f"process_{key.lower()}")(line)
+                break
 
-        if "SPELL_DAMAGE_SUPPORT" in line or "SPELL_PERIODIC_DAMAGE_SUPPORT" in line:
-            self.process_line_support(line)
-        elif "SPELL_DAMAGE" in line:
-            self.process_line_spells(line)
-            columns = line.split(",")
-            if "Player" not in columns[1]:
-                return
-
-            timestamp = columns[0].strip("  SPELL_DAMAGE")
-            if self.start_timestamp is None:
-                self.start_timestamp = datetime.strptime(timestamp, "%m/%d %H:%M:%S.%f")
-            self.end_timestamp = datetime.strptime(timestamp, "%m/%d %H:%M:%S.%f")
-            player_id = columns[1].strip('"')
-            if (
-                player_id in self.player_data
-                and self.player_data[player_id]["name"] == ""
-            ):
-                player_name = columns[2].strip('"')
-                self.player_data[player_id].update({"name": player_name})
-        if "SWING_DAMAGE_LANDED_SUPPORT" in line or "RANGE_DAMAGE_SUPPORT" in line:
-            self.process_line_support(line)
-        elif "SWING_DAMAGE" in line or "RANGE_DAMAGE" in line:
-            self.process_line_swing(line)
-
-        if "SPELL_PERIODIC_DAMAGE" in line:
-            self.process_line_spells(line)
+        return
 
     def print_player_stats(self, verbose=None):
         sorted_data = sorted(
