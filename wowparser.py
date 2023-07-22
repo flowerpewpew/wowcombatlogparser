@@ -4,6 +4,7 @@ import codecs
 from datetime import datetime
 from colorama import init, Fore, Back
 import re
+from functools import lru_cache
 
 init()
 
@@ -88,6 +89,7 @@ class CombatLogAnalyzer:
         self.end_timestamp = None
         self.show_loading = True
 
+    @lru_cache(maxsize=512)
     def get_file_size(self, file_path):
         try:
             size = os.path.getsize(file_path)
@@ -112,7 +114,8 @@ class CombatLogAnalyzer:
         os.system("cls" if os.name == "nt" else "clear")
 
     def process_zone_change(self, line):
-        if "2444" in line:
+        # logout zone
+        if "Weyrnrest" in line:
             return
         self.player_data = {}
         self.start_timestamp = None
@@ -124,10 +127,8 @@ class CombatLogAnalyzer:
         pet_id = columns[5].strip('"')
         if player_id in self.player_data:
             if "pets" not in self.player_data[player_id]:
-                pets_key = "pets"
-                pets_list = []
-                self.player_data[player_id][pets_key] = pets_list
-            self.player_data[player_id]["pets"].append(pet_id)
+                self.player_data[player_id]["pets"] = set()  # change list to set
+            self.player_data[player_id]["pets"].add(pet_id)
         return
 
     def process_combatant_info(self, line):
@@ -238,10 +239,8 @@ class CombatLogAnalyzer:
             owner_id = columns[10]
             if owner_id in self.player_data:
                 if "pets" not in self.player_data[owner_id]:
-                    pets_key = "pets"
-                    pets_list = []
-                    self.player_data[owner_id][pets_key] = pets_list
-                self.player_data[owner_id]["pets"].append(entity_id)
+                    self.player_data[owner_id]["pets"] = set()  # change list to set
+                self.player_data[owner_id]["pets"].add(entity_id)
 
         owner_player_id = None
         for player, data in self.player_data.items():
