@@ -112,6 +112,8 @@ class CombatLogAnalyzer:
         os.system("cls" if os.name == "nt" else "clear")
 
     def process_zone_change(self, line):
+        if "2444" in line:
+            return
         self.player_data = {}
         self.start_timestamp = None
         return
